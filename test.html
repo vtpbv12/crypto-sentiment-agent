@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="ru">
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width,initial-scale=1" />
+    <title>Changelog parser — Telegram API</title>
+    <style>
+        :root{
+            --bg:#0b0d10;--panel:#111418;--ink:#e6e9ef;--muted:#9aa4b2;--accent:#4fd1c5;
+            --green:#2ecc71;--blue:#3b82f6;--orange:#f59e0b;--chip:#1a1f26;--border:#232a33;
+        }
+        @media (prefers-color-scheme: light){
+            :root{--bg:#f7f9fc;--panel:#ffffff;--ink:#0f172a;--muted:#536076;--accent:#0ea5e9;
+                --green:#059669;--blue:#2563eb;--orange:#d97706;--chip:#eef2f7;--border:#e5e9ef;}
+        }
+        *{box-sizing:border-box}
+        html,body{height:100%}
+        body{margin:0;background:linear-gradient(180deg,var(--bg),#0a0c0f);color:var(--ink);font:14px/1.45 system-ui,-apple-system,Segoe UI,Roboto,Inter,Arial}
+        .page{max-width:1200px;margin:32px auto;padding:0 20px}
+        .header{display:flex;gap:16px;align-items:center;justify-content:space-between;margin-bottom:18px}
+        .title{font-size:24px;font-weight:700;letter-spacing:.2px}
+        .controls{display:flex;flex-wrap:wrap;gap:8px}
+        .btn{border:1px solid var(--border);background:var(--panel);color:var(--ink);padding:10px 14px;border-radius:12px;cursor:pointer;transition:.15s;
+            box-shadow:0 1px 0 rgba(255,255,255,.03) inset}
+        .btn:hover{transform:translateY(-1px)}
+        .btn--accent{border-color:transparent;background:linear-gradient(180deg,var(--accent),#258cbd);color:#fff}
+        .grid{display:grid;grid-template-columns:1fr 2fr;gap:16px}
+        @media(max-width:920px){.grid{grid-template-columns:1fr}}
+        .card{background:var(--panel);border:1px solid var(--border);border-radius:16px;overflow:hidden}
+        .card__head{padding:12px 14px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:8px}
+        .card__title{font-weight:700}
+        .card__body{padding:14px}
+        textarea{width:100%;min-height:260px;border:1px solid var(--border);background:#0000;color:var(--ink);border-radius:12px;padding:12px;font:13px/1.5 ui-monospace,SFMono-Regular,Menlo,Consolas,monospace;resize:vertical}
+        .stack{display:flex;gap:10px;flex-wrap:wrap;align-items:center}
+        .filters{display:flex;gap:8px;flex-wrap:wrap}
+        .filter{padding:6px 10px;border-radius:999px;border:1px solid var(--border);background:var(--chip);color:var(--muted);cursor:pointer}
+        .filter[data-active="true"]{background:var(--accent);color:#001018;border-color:transparent}
+        .search{flex:1;min-width:160px}
+        .search input{width:100%;padding:10px 12px;border-radius:12px;border:1px solid var(--border);background:#0000;color:var(--ink)}
+        .list{padding:8px 10px 16px}
+        .item{border:1px solid var(--border);border-radius:14px;padding:12px 12px;display:grid;grid-template-columns:1.2fr 2fr;gap:10px;margin:10px 0;background:#0001}
+        @media(max-width:720px){.item{grid-template-columns:1fr}}
+        .item__type{display:flex;align-items:center;gap:8px}
+        .badge{font-size:12px;font-weight:700;padding:3px 8px;border-radius:999px}
+        .badge--field{background:linear-gradient(180deg,var(--green),#1f9a5c);color:#00140b}
+        .badge--class{background:linear-gradient(180deg,var(--blue),#1d4ed8);color:#fff}
+        .badge--param{background:linear-gradient(180deg,var(--orange),#b45309);color:#130a00}
+        .item__title code{background:var(--chip);padding:2px 6px;border-radius:8px;font-size:13px}
+        .chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:6px}
+        .chip{border:1px solid var(--border);background:var(--chip);padding:4px 8px;border-radius:999px;font-size:12px}
+        .muted{color:var(--muted)}
+        .footer{display:flex;justify-content:flex-end;padding:12px 14px;border-top:1px solid var(--border);gap:8px}
+        .empty{padding:18px;color:var(--muted);text-align:center}
+        .kpi{display:flex;gap:8px;flex-wrap:wrap}
+        .kpi__pill{border:1px solid var(--border);background:var(--chip);padding:6px 10px;border-radius:999px}
+        @media print{
+            .page{max-width:none;margin:0}
+            .grid{grid-template-columns:1fr}
+            .card,.item{break-inside:avoid}
+            .header,.footer,.card__head:has(.btn){display:none}
+            body{background:#fff;color:#000}
+        }
+    </style>
+</head>
+<body>
+<div class="page">
+    <header class="header">
+        <div class="title">Телеграм API — человекопонятный changelog</div>
+        <div class="controls">
+            <button class="btn btn--accent" id="parseBtn" title="Преобразовать текст в структурированный список">Преобразовать</button>
+            <button class="btn" id="exportJsonBtn">Экспорт JSON</button>
+            <button class="btn" id="printBtn">Печать</button>
+        </div>
+    </header>
+
+    <div class="grid">
+        <!-- INPUT -->
+        <section class="card">
+            <div class="card__head">
+                <div class="card__title">Исходный текст</div>
+            </div>
+            <div class="card__body">
+<textarea id="rawInput" spellcheck="false">Добавлено поле is_direct_messages в классы Chat и ChatFullInfo , которое можно использовать для идентификации супергрупп, используемых в качестве чатов прямых сообщений канала.
+Добавлено поле parent_chat в класс ChatFullInfo , которое указывает родительский канал чата для канала прямых сообщений чата.
+Добавлен класс DirectMessagesTopic и поле direct_messages_topic в класс Message , описывающее тему чата прямых сообщений.
+Добавлен параметр direct_messages_topic_id к методам sendMessage , sendPhoto , sendVideo , sendAnimation , sendAudio , sendDocument , sendPaidMedia , sendSticker , sendVideoNote , sendVoice , sendLocation , sendVenue , sendContact , sendDice , sendInvoice , sendMediaGroup , copyMessage , copyMessages , forwardMessage и forwardMessages .</textarea>
+            </div>
+            <div class="footer">
+                <div class="muted">Подсказка: просто вставь сюда релиз-ноуты на русском — парсер всё разложит по полочкам.</div>
+            </div>
+        </section>
+
+        <!-- OUTPUT -->
+        <section class="card" id="outputCard">
+            <div class="card__head" style="justify-content:space-between">
+                <div class="stack">
+                    <div class="card__title">Результат</div>
+                    <div class="kpi" id="kpi"></div>
+                </div>
+                <div class="controls" style="gap:12px">
+                    <div class="filters" id="filters">
+                        <button class="filter" data-type="field" data-active="true">Поля</button>
+                        <button class="filter" data-type="class" data-active="true">Классы</button>
+                        <button class="filter" data-type="parameter" data-active="true">Параметры</button>
+                    </div>
+                    <div class="search"><input id="search" type="search" placeholder="Поиск… (поле, класс, метод)"></div>
+                </div>
+            </div>
+            <div class="card__body">
+                <div id="list" class="list empty">Нажми «Преобразовать» ⟶</div>
+            </div>
+        </section>
+    </div>
+</div>
+
+<script>
+    const el = (sel, root=document)=>root.querySelector(sel);
+    const els = (sel, root=document)=>Array.from(root.querySelectorAll(sel));
+
+    const splitByAndComma = s => s
+        .replace(/\s{2,}/g,' ')
+        .split(/(?:,\s*| и )/g)
+        .map(x=>x.trim())
+        .filter(Boolean);
+
+    function parseLines(input){
+        const lines = input.split(/\r?\n/).map(s=>s.trim()).filter(Boolean);
+        /** @type {Array<{type:'field'|'class'|'parameter', name:string, targets?:string[], appliesTo?:string[], description?:string}>} */
+        const items = [];
+
+        for(const line of lines){
+            // Добавлено поле ...
+            let m = line.match(/^Добавлено поле\s+([^\s,]+)\s+в классы?\s+(.+?)(?:\s*,\s*(.+))?$/i);
+            if(m){
+                const [, field, classesStr, descRaw] = m;
+                items.push({
+                    type:'field',
+                    name: field.trim(),
+                    targets: splitByAndComma(classesStr.replace(/\s+,$/,'').replace(/\s+/g,' ').replace(/\s+,$/,'').trim()),
+                    description: (descRaw||'').replace(/\s+/g,' ').trim()
+                });
+                continue;
+            }
+
+            // Добавлен класс X и поле Y в класс(ы) Z , ...
+            m = line.match(/^Добавлен класс\s+([^\s,]+)(?:\s+и\s+поле\s+([^\s,]+)\s+в\s+классы?\s+([^,]+))?(?:\s*,\s*(.+))?$/i);
+            if(m){
+                const [, className, extraField, extraTargets, descRaw] = m;
+                items.push({ type:'class', name: className.trim(), description: (descRaw||'').replace(/\s+/g,' ').trim() });
+                if(extraField){
+                    items.push({
+                        type:'field',
+                        name: extraField.trim(),
+                        targets: splitByAndComma((extraTargets||'').trim()),
+                        description: (descRaw||'').replace(/\s+/g,' ').trim()
+                    });
+                }
+                continue;
+            }
+
+            // Добавлен параметр P к методам A, B и C.
+            m = line.match(/^Добавлен параметр\s+([^\s,]+)\s+к\s+методам\s+(.+?)(?:\.\s*|$)/i);
+            if(m){
+                const [, param, methodsStr] = m;
+                items.push({
+                    type:'parameter',
+                    name: param.trim(),
+                    appliesTo: splitByAndComma(methodsStr.replace(/\s+/g,' ').replace(/\s+,$/,'').trim())
+                });
+                continue;
+            }
+
+            // fallback: если ничего не распознано — положим как заметку-класс
+            items.push({ type:'class', name: line.slice(0,64)+'…', description: line });
+        }
+        return items;
+    }
+
+    function render(items){
+        const list = el('#list');
+        if(!items.length){ list.className='list empty'; list.textContent='Пусто'; return; }
+        list.className='list';
+        list.innerHTML = '';
+
+        // KPI
+        const kpi = el('#kpi');
+        const counts = {
+            field: items.filter(i=>i.type==='field').length,
+            class: items.filter(i=>i.type==='class').length,
+            parameter: items.filter(i=>i.type==='parameter').length
+        };
+        kpi.innerHTML = `
+        <div class="kpi__pill">Поля: <strong>${counts.field}</strong></div>
+        <div class="kpi__pill">Классы: <strong>${counts.class}</strong></div>
+        <div class="kpi__pill">Параметры: <strong>${counts.parameter}</strong></div>
+        <div class="kpi__pill">Всего: <strong>${items.length}</strong></div>
+      `;
+
+        const typeBadge = (t)=>({
+            field:'<span class="badge badge--field">FIELD</span>',
+            class:'<span class="badge badge--class">CLASS</span>',
+            parameter:'<span class="badge badge--param">PARAM</span>'
+        }[t]);
+
+        for(const it of items){
+            const id = `${it.type}-${it.name}`.toLowerCase().replace(/[^\w-]+/g,'-');
+            const chipsTargets = (it.targets||[]).map(c=>`<span class="chip" title="Класс">${c}</span>`).join('');
+            const chipsMethods = (it.appliesTo||[]).map(m=>`<span class="chip" title="Метод">${m}()</span>`).join('');
+            const desc = it.description ? `<div class="muted" style="margin-top:6px">${it.description}</div>` : '';
+
+            const right = it.type==='parameter' ? `
+          <div><div class="muted">Применяется к методам:</div><div class="chips">${chipsMethods||'<span class="muted">—</span>'}</div>${desc}</div>
+        ` : `
+          <div>${it.targets?.length?'<div class="muted">Относится к классам:</div>':''}
+               <div class="chips">${chipsTargets||'<span class="muted">—</span>'}</div>${desc}
+          </div>
+        `;
+
+            const node = document.createElement('article');
+            node.className = `item item--${it.type}`;
+            node.dataset.type = it.type;
+            node.dataset.search = [it.name,(it.targets||[]).join(' '),(it.appliesTo||[]).join(' '),(it.description||'')].join(' ').toLowerCase();
+            node.innerHTML = `
+          <div class="item__type">${typeBadge(it.type)}</div>
+          <div class="item__title"><a id="${id}" href="#${id}" class="muted" style="text-decoration:none">#</a> <code>${it.name}</code></div>
+          <div class="item__meta">${right}</div>
+        `;
+            list.appendChild(node);
+        }
+    }
+
+    // State
+    let parsed = [];
+    function applyFilters(){
+        const active = new Set(els('.filter').filter(b=>b.dataset.active==='true').map(b=>b.dataset.type));
+        const q = el('#search').value.trim().toLowerCase();
+        els('.item').forEach(n=>{
+            const okType = active.has(n.dataset.type);
+            const okSearch = !q || n.dataset.search.includes(q);
+            n.style.display = (okType && okSearch) ? '' : 'none';
+        });
+    }
+
+    // Events
+    el('#parseBtn').addEventListener('click', ()=>{
+        parsed = parseLines(el('#rawInput').value);
+        render(parsed);
+        applyFilters();
+        el('#outputCard').scrollIntoView({behavior:'smooth',block:'start'});
+    });
+
+    el('#exportJsonBtn').addEventListener('click', ()=>{
+        if(!parsed.length){ alert('Сначала преобразуй текст.'); return; }
+        const blob = new Blob([JSON.stringify(parsed,null,2)],{type:'application/json'});
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url; a.download = 'telegram_api_changelog.json'; a.click();
+        URL.revokeObjectURL(url);
+    });
+
+    el('#printBtn').addEventListener('click', ()=>window.print());
+
+    el('#filters').addEventListener('click', (e)=>{
+        const b = e.target.closest('.filter'); if(!b) return;
+        b.dataset.active = (b.dataset.active==='true') ? 'false' : 'true';
+        applyFilters();
+    });
+
+    el('#search').addEventListener('input', applyFilters);
+
+    // Auto-parse initial sample
+    window.addEventListener('DOMContentLoaded', ()=>{ el('#parseBtn').click(); });
+</script>
+</body>
+</html>

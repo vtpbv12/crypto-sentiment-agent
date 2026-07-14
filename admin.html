@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>Админка пользователей</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 1rem;
+            background-color: #f5f6fa;
+        }
+        h1 {
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+        .stats {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            flex-wrap: wrap;
+        }
+        .stat-card {
+            background: white;
+            padding: 1rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            flex: 1;
+            min-width: 150px;
+        }
+        .stat-card h3 {
+            margin: 0 0 0.5rem 0;
+            font-size: 0.9rem;
+            color: #666;
+        }
+        .stat-card .number {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #2c3e50;
+        }
+        .controls {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 1rem;
+            margin-bottom: 1rem;
+            justify-content: space-between;
+        }
+        .controls input,
+        .controls select {
+            padding: 0.5rem;
+            font-size: 1rem;
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            background: white;
+            box-shadow: 0 0 10px rgba(0,0,0,0.05);
+        }
+        th, td {
+            padding: 0.75rem;
+            text-align: left;
+            border-bottom: 1px solid #eee;
+        }
+        th {
+            background-color: #f0f0f0;
+        }
+        button {
+            padding: 0.5rem 1rem;
+            font-size: 0.9rem;
+            cursor: pointer;
+            border: none;
+            border-radius: 4px;
+        }
+        .btn-extend {
+            background-color: #4caf50;
+            color: white;
+            margin-right: 0.5rem;
+        }
+        .btn-extend:hover {
+            background-color: #45a049;
+        }
+        .badge {
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.85rem;
+            font-weight: bold;
+        }
+        .badge-active { background-color: #d4edda; color: #155724; }
+        .badge-trial { background-color: #fff3cd; color: #856404; }
+        .badge-expired { background-color: #f8d7da; color: #721c24; }
+        .pagination {
+            margin-top: 1rem;
+            text-align: center;
+        }
+        .pagination button {
+            margin: 0 5px;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Пользователи бота</h1>
+
+<div class="stats" id="stats">
+    <div class="stat-card">
+        <h3>Всего пользователей</h3>
+        <div class="number">-</div>
+    </div>
+    <div class="stat-card">
+        <h3>✅ Активных</h3>
+        <div class="number">-</div>
+    </div>
+    <div class="stat-card">
+        <h3>🎁 На триале</h3>
+        <div class="number">-</div>
+    </div>
+    <div class="stat-card">
+        <h3>❌ Неактивных</h3>
+        <div class="number">-</div>
+    </div>
+</div>
+
+<div class="controls">
+    <input type="text" id="search" placeholder="Поиск по нику...">
+    <select id="statusFilter">
+        <option value="active" selected>✅ Активные</option>
+        <option value="inactive">❌ Неактивные</option>
+        <option value="all">Все</option>
+    </select>
+</div>
+
+<table>
+    <thead>
+    <tr>
+        <th>ID</th>
+        <th>Имя</th>
+        <th>Ник</th>
+        <th>Статус</th>
+        <th>Подписка до</th>
+        <th>Действия</th>
+    </tr>
+    </thead>
+    <tbody id="usersTableBody">
+    <tr><td colspan="6">Загрузка...</td></tr>
+    </tbody>
+</table>
+
+<div class="pagination">
+    <button onclick="prevPage()">← Назад</button>
+    <span id="pageInfo">Стр. 1</span>
+    <button onclick="nextPage()">Вперёд →</button>
+</div>
+
+<script>
+    let currentPage = 1;
+    const API_URLS = [
+        'http://localhost:5001',
+        'http://194.31.175.129:5001'
+    ];
+    let API_URL = API_URLS[0];
+
+    // Динамический размер страницы в зависимости от статуса
+    function getPageSize() {
+        const status = document.getElementById("statusFilter").value;
+        return status === "inactive" ? 300 : 20;
+    }
+
+    async function testApiConnection() {
+        for (const url of API_URLS) {
+            try {
+                const res = await fetch(`${url}/api/v1/users/stats`, {
+                    method: 'GET',
+                    mode: 'cors'
+                });
+                if (res.ok) {
+                    API_URL = url;
+                    console.log('✅ API доступен:', API_URL);
+                    return true;
+                }
+            } catch (e) {
+                console.log('❌ Не доступен:', url);
+            }
+        }
+        alert('⚠️ API недоступен! Проверь что сервер запущен.');
+        return false;
+    }
+
+    async function fetchStats() {
+        try {
+            const res = await fetch(`${API_URL}/api/v1/users/stats`);
+            if (!res.ok) throw new Error(`HTTP ${res.status}`);
+
+            const data = await res.json();
+            const cards = document.querySelectorAll('.stat-card .number');
+            cards[0].textContent = data.total || 0;
+            cards[1].textContent = data.active || 0;
+            cards[2].textContent = data.trial || 0;
+            cards[3].textContent = data.inactive || 0;
+        } catch (e) {
+            console.error('Ошибка загрузки статистики:', e);
+        }
+    }
+
+    async function fetchUsers() {
+        const search = document.getElementById("search").value.trim();
+        const status = document.getElementById("statusFilter").value;
+        const pageSize = getPageSize();
+        const offset = (currentPage - 1) * pageSize;
+
+        let url = `${API_URL}/api/v1/users?limit=${pageSize}&offset=${offset}`;
+        if (search) url += `&search=${encodeURIComponent(search)}`;
+        if (status !== "all") url += `&status=${status}`;
+
+        const tbody = document.getElementById("usersTableBody");
+        tbody.innerHTML = "<tr><td colspan='6'>Загрузка...</td></tr>";
+
+        try {
+            const res = await fetch(url);
+            const users = await res.json();
+
+            if (!Array.isArray(users)) throw new Error("Неверный формат данных");
+
+            if (users.length === 0) {
+                tbody.innerHTML = "<tr><td colspan='6'>Нет пользователей</td></tr>";
+                return;
+            }
+
+            tbody.innerHTML = "";
+            for (const user of users) {
+                const now = new Date();
+                const expiresAt = user.subscription_expires_at ? new Date(user.subscription_expires_at) : null;
+                const isExpired = !expiresAt || expiresAt <= now;
+
+                let statusBadge;
+                if (!isExpired) {
+                    const daysLeft = Math.ceil((expiresAt - now) / (1000 * 60 * 60 * 24));
+                    if (user.trial_used && daysLeft <= 7) {
+                        statusBadge = `<span class="badge badge-trial">🎁 Триал (${daysLeft} дн.)</span>`;
+                    } else {
+                        statusBadge = `<span class="badge badge-active">✅ Активен (${daysLeft} дн.)</span>`;
+                    }
+                } else {
+                    statusBadge = `<span class="badge badge-expired">❌ Неактивен</span>`;
+                }
+
+                const expiresAtStr = expiresAt ? expiresAt.toLocaleString() : "-";
+                const btn = `<button class="btn-extend" onclick="extend('${user.telegram_id}')">Продлить на 30 дней</button>`;
+
+                tbody.innerHTML += `
+          <tr>
+            <td>${user.id}</td>
+            <td>${user.first_name || ""} ${user.last_name || ""}</td>
+            <td>@${user.username || "-"}</td>
+            <td>${statusBadge}</td>
+            <td>${expiresAtStr}</td>
+            <td>${btn}</td>
+          </tr>
+        `;
+            }
+
+            document.getElementById("pageInfo").innerText = `Стр. ${currentPage} (показано: ${users.length})`;
+        } catch (e) {
+            console.error("Ошибка загрузки:", e);
+            tbody.innerHTML = "<tr><td colspan='6'>Ошибка загрузки</td></tr>";
+        }
+    }
+
+    async function extend(telegramId) {
+        if (!confirm('Продлить подписку на 30 дней?')) return;
+
+        try {
+            const res = await fetch(`${API_URL}/api/v1/users/${telegramId}/extend`, {
+                method: "POST",
+            });
+            const data = await res.json();
+
+            if (res.ok) {
+                alert(data.message || "Подписка продлена!");
+                fetchUsers();
+                fetchStats();
+            } else {
+                alert("Ошибка: " + (data.error || "Не удалось продлить"));
+            }
+        } catch (e) {
+            alert("Ошибка: " + e.message);
+        }
+    }
+
+    function prevPage() {
+        if (currentPage > 1) {
+            currentPage--;
+            fetchUsers();
+        }
+    }
+
+    function nextPage() {
+        currentPage++;
+        fetchUsers();
+    }
+
+    document.getElementById("search").addEventListener("input", () => {
+        currentPage = 1;
+        fetchUsers();
+    });
+
+    document.getElementById("statusFilter").addEventListener("change", () => {
+        currentPage = 1;
+        fetchUsers();
+    });
+
+    document.addEventListener("DOMContentLoaded", async () => {
+        await testApiConnection();
+        document.getElementById("statusFilter").value = "active";
+        fetchStats();
+        fetchUsers();
+    });
+</script>
+
+</body>
+</html>
